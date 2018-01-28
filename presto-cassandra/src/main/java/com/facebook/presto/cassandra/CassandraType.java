@@ -16,6 +16,7 @@ package com.facebook.presto.cassandra;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.utils.Bytes;
+import com.datastax.driver.core.LocalDate;
 import com.facebook.presto.cassandra.util.CassandraCqlUtils;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.predicate.NullableValue;
@@ -67,6 +68,7 @@ public enum CassandraType
     INET(createVarcharType(Constants.IP_ADDRESS_STRING_MAX_LENGTH), InetAddress.class),
     INT(IntegerType.INTEGER, Integer.class),
     TEXT(createUnboundedVarcharType(), String.class),
+    DATE(DateType.DATE, LocalDate.class),
     TIMESTAMP(TimestampType.TIMESTAMP, Date.class),
     UUID(createVarcharType(Constants.UUID_STRING_MAX_LENGTH), java.util.UUID.class),
     TIMEUUID(createVarcharType(Constants.UUID_STRING_MAX_LENGTH), java.util.UUID.class),
@@ -145,6 +147,8 @@ public enum CassandraType
                 return SET;
             case TEXT:
                 return TEXT;
+            case DATE:
+                return DATE;
             case TIMESTAMP:
                 return TIMESTAMP;
             case TIMEUUID:
@@ -194,6 +198,8 @@ public enum CassandraType
                 case UUID:
                 case TIMEUUID:
                     return NullableValue.of(nativeType, utf8Slice(row.getUUID(i).toString()));
+                case DATE:
+                    return NullableValue.of(nativeType, (long) row.getDate(i).getDaysSinceEpoch());
                 case TIMESTAMP:
                     return NullableValue.of(nativeType, row.getTimestamp(i).getTime());
                 case INET:
@@ -315,6 +321,9 @@ public enum CassandraType
                 case UUID:
                 case TIMEUUID:
                     return row.getUUID(i).toString();
+                case DATE:
+                    return CassandraCqlUtils.quoteStringLiteral(
+                            LocalDate.fromDaysSinceEpoch(row.getDate(i).getDaysSinceEpoch()).toString());
                 case TIMESTAMP:
                     return Long.toString(row.getTimestamp(i).getTime());
                 case INET:
@@ -354,6 +363,7 @@ public enum CassandraType
             case BOOLEAN:
             case DOUBLE:
             case FLOAT:
+            case DATE:
             case DECIMAL:
                 return object.toString();
             default:
@@ -409,6 +419,8 @@ public enum CassandraType
                 // Presto uses double for decimal, so to keep the floating point precision, convert it to string.
                 // Otherwise partition id doesn't match
                 return new BigDecimal(nativeValue.toString());
+            case DATE:
+                return LocalDate.fromDaysSinceEpoch(((Long) nativeValue).intValue());
             case TIMESTAMP:
                 return new Date((Long) nativeValue);
             case UUID:
@@ -440,6 +452,7 @@ public enum CassandraType
             case INT:
             case FLOAT:
             case DECIMAL:
+            case DATE:
             case TIMESTAMP:
             case UUID:
             case TIMEUUID:
@@ -470,6 +483,7 @@ public enum CassandraType
             case INT:
             case FLOAT:
             case DECIMAL:
+            case DATE:
             case TIMESTAMP:
             case UUID:
             case TIMEUUID:
@@ -508,7 +522,7 @@ public enum CassandraType
             return TEXT;
         }
         else if (type.equals(DateType.DATE)) {
-            return TEXT;
+            return DATE;
         }
         else if (type.equals(VarbinaryType.VARBINARY)) {
             return BLOB;
