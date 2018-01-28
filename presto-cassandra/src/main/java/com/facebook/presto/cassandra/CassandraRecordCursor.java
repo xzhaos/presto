@@ -98,6 +98,8 @@ public class CassandraRecordCursor
             case BIGINT:
             case COUNTER:
                 return currentRow.getLong(i);
+            case DATE:
+                return (long) currentRow.getDate(i).getDaysSinceEpoch(); 
             case TIMESTAMP:
                 return currentRow.getTimestamp(i).getTime();
             case FLOAT:
